@@ -20,10 +20,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.AndroidRuntimeException;
+import android.util.Log;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AnimationUtils;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
+
+import com.nineoldandroids.LibConfig;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +44,8 @@ import java.util.HashMap;
  * {@link ValueAnimator#setInterpolator(TimeInterpolator)}.</p>
  */
 public class ValueAnimator extends Animator {
+    private static final String TAG = "ValueAnimator";
+    private static final boolean DEBUG = LibConfig.DEBUG;
 
     /**
      * Internal constants
@@ -99,7 +104,7 @@ public class ValueAnimator extends Animator {
             new ThreadLocal<ArrayList<ValueAnimator>>() {
                 @Override
                 protected ArrayList<ValueAnimator> initialValue() {
-                    return new ArrayList<ValueAnimator>();
+                    return new DebugArrayList("sAnimations");
                 }
             };
 
@@ -108,7 +113,7 @@ public class ValueAnimator extends Animator {
             new ThreadLocal<ArrayList<ValueAnimator>>() {
                 @Override
                 protected ArrayList<ValueAnimator> initialValue() {
-                    return new ArrayList<ValueAnimator>();
+                    return new DebugArrayList("sPendingAnimations");
                 }
             };
 
@@ -120,7 +125,7 @@ public class ValueAnimator extends Animator {
             new ThreadLocal<ArrayList<ValueAnimator>>() {
                 @Override
                 protected ArrayList<ValueAnimator> initialValue() {
-                    return new ArrayList<ValueAnimator>();
+                    return new DebugArrayList("sDelayedAnims");
                 }
             };
 
@@ -128,7 +133,7 @@ public class ValueAnimator extends Animator {
             new ThreadLocal<ArrayList<ValueAnimator>>() {
                 @Override
                 protected ArrayList<ValueAnimator> initialValue() {
-                    return new ArrayList<ValueAnimator>();
+                    return new DebugArrayList("sEndingAnims");
                 }
             };
 
@@ -136,7 +141,7 @@ public class ValueAnimator extends Animator {
             new ThreadLocal<ArrayList<ValueAnimator>>() {
                 @Override
                 protected ArrayList<ValueAnimator> initialValue() {
-                    return new ArrayList<ValueAnimator>();
+                    return new DebugArrayList("sReadyAnims");
                 }
             };
 
@@ -953,6 +958,10 @@ public class ValueAnimator extends Animator {
 
     @Override
     public void cancel() {
+        if (DEBUG) {
+            Log.d(TAG, "cancel the animation: " + this + ", cur state: " + mPlayingState
+                    + ", isRunning? " + mRunning);
+        }
         // Only cancel if the animation is actually running or has been started and is about
         // to run
         if (mPlayingState != STOPPED || sPendingAnimations.get().contains(this) ||
@@ -1260,5 +1269,78 @@ public class ValueAnimator extends Animator {
             }
         }
         return returnVal;
+    }
+
+    private static class DebugArrayList extends ArrayList<ValueAnimator> {
+        private static final long serialVersionUID = -7094162177304218049L;
+
+        private String mTag;
+
+        public DebugArrayList(String tag) {
+            mTag = tag;
+        }
+
+        @Override
+        public boolean add(ValueAnimator object) {
+            super.add(object);
+            if (DEBUG) {
+                Log.d(TAG, mTag + ", add: " + object + ", toStr: " + object + ", now size: " + size());
+            }
+            return true;
+        }
+
+        @Override
+        public boolean remove(Object object) {
+            boolean removed = super.remove(object);
+            if (DEBUG) {
+                Log.d(TAG, mTag + ", remove: " + object + ", toStr: " + object + ", left size: " + size());
+            }
+            return removed;
+        }
+
+        @Override
+        public void clear() {
+            if (DEBUG) {
+                Log.d(TAG, mTag + ", clear array, cur size: " + size());
+            }
+            super.clear();
+        }
+
+    }
+
+    public static void dumpAnimationsList() {
+        Log.d(TAG, "begin dump...");
+
+        ArrayList<ValueAnimator> curList = sPendingAnimations.get();
+        Log.d(TAG, "sPendingAnimations size: " + curList.size());
+        for (ValueAnimator anim : curList) {
+            Log.d(TAG, "    anim: " + anim);
+        }
+
+        curList = sAnimations.get();
+        Log.d(TAG, "sAnimations size: " + curList.size());
+        for (ValueAnimator anim : curList) {
+            Log.d(TAG, "    anim: " + anim);
+        }
+
+        curList = sDelayedAnims.get();
+        Log.d(TAG, "sDelayedAnims size: " + curList.size());
+        for (ValueAnimator anim : curList) {
+            Log.d(TAG, "    anim: " + anim);
+        }
+
+        curList = sEndingAnims.get();
+        Log.d(TAG, "sEndingAnims size: " + curList.size());
+        for (ValueAnimator anim : curList) {
+            Log.d(TAG, "    anim: " + anim);
+        }
+
+        curList = sReadyAnims.get();
+        Log.d(TAG, "sReadyAnims size: " + curList.size());
+        for (ValueAnimator anim : curList) {
+            Log.d(TAG, "    anim: " + anim);
+        }
+
+        Log.d(TAG, "end dump");
     }
 }
